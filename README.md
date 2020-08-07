@@ -29,7 +29,7 @@ mvn install
 ~~~
 
 **添加依赖**
-~~~
+~~~xml
 <dependency>
     <groupId>io.github.hedehai.tftp</groupId>
     <artifactId>netty-tftp</artifactId>
@@ -38,14 +38,14 @@ mvn install
 ~~~
 
 **简单调用**
-~~~
+~~~java
 File rootDir = new File("workspace/root/");
 TftpServer server = new TftpServer(rootDir);
 server.start();
 ~~~
 
 **高级调用**
-~~~
+~~~java
 File rootDir = new File("workspace/root/");
 TftpServer server = new TftpServer(rootDir);
 
