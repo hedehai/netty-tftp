@@ -1,7 +1,7 @@
 # netty-tftp
 　　netty-tftp实现了基于netty的TFTP Server。
   
-　　之所以造这个轮子，是因为我在项目中需要集成TFTP Server，但没有找到合适的java库。现有的几个java库有以下的缺点：
+　　之所以造这个轮子，是因为我在项目中需要集成TFTP Server，但没有找到合适的java库。现有的几个java库有以下的问题：
 + 不支持选项协商，每个包只能传输512B，传输速度慢。
 + 不支持大于32M的文件。
 
@@ -65,7 +65,7 @@ server.start();
 
 以上这2个客户端都可以正常地连接到server上进行文件读写。3CDaemon功能更全，支持协商。
 
-## 待做列表**
+## 待做列表
 
 实现配套的TFTP Client。
 
