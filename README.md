@@ -59,11 +59,13 @@ server.setAllowOverwrite(false);
 server.start();
 ~~~
 
-**测试过的TFTP Client**
+## 测试过的TFTP Client
 + windows TFTP client
 + 3CDaemon v2.0
 
-**待做列表**
+以上这2个客户端都可以正常地连接到server上进行文件读写。3CDaemon功能更全，支持协商。
+
+## 待做列表**
 
 实现配套的TFTP Client。
 
