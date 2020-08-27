@@ -21,20 +21,20 @@
 
 
 ## 如何使用
-**安装**
-~~~
-git clone https://github.com/hedehai/netty-tftp.git
 
-mvn install 
-~~~
-
-**添加依赖**
+**添加依赖pom.xml**
 ~~~xml
 <dependency>
     <groupId>io.github.hedehai.tftp</groupId>
     <artifactId>netty-tftp</artifactId>
     <version>1.0.0</version>
 </dependency>
+
+<repository>
+    <id>github</id>
+    <name>GitHub OWNER Apache Maven Packages</name>
+    <url>https://maven.pkg.github.com/hedehai/netty-tftp</url>
+</repository>
 ~~~
 
 **简单调用**
