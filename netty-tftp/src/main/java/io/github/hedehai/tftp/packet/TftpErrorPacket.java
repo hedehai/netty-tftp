@@ -34,6 +34,16 @@ public class TftpErrorPacket extends BaseTftpPacket {
 
 
     /**
+     * @param tftpError
+     */
+    public TftpErrorPacket(TftpError tftpError) {
+        super(TftpOpcode.ERROR);
+        this.errorCode = tftpError.getErrorCode();
+        this.errorMessage = tftpError.getErrorMessage();
+    }
+
+
+    /**
      * @param byteBuf
      */
     public TftpErrorPacket(ByteBuf byteBuf) {
@@ -42,18 +52,9 @@ public class TftpErrorPacket extends BaseTftpPacket {
         this.errorCode = byteBuf.readUnsignedShort();
         if (byteBuf.isReadable() && byteBuf.readableBytes() > 1) {
             byte[] bytes = new byte[byteBuf.readableBytes() - 1];
+            byteBuf.readBytes(bytes);
             this.errorMessage = new String(bytes, StandardCharsets.US_ASCII);
         }
-    }
-
-
-    /**
-     * @param tftpError
-     */
-    public TftpErrorPacket(TftpError tftpError) {
-        super(TftpOpcode.ERROR);
-        this.errorCode = tftpError.getErrorCode();
-        this.errorMessage = tftpError.getErrorMessage();
     }
 
 
@@ -67,6 +68,21 @@ public class TftpErrorPacket extends BaseTftpPacket {
         return byteBuf;
     }
 
+    public int getErrorCode() {
+        return errorCode;
+    }
+
+    public void setErrorCode(int errorCode) {
+        this.errorCode = errorCode;
+    }
+
+    public String getErrorMessage() {
+        return errorMessage;
+    }
+
+    public void setErrorMessage(String errorMessage) {
+        this.errorMessage = errorMessage;
+    }
 
     @Override
     public String toString() {

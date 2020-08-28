@@ -20,7 +20,7 @@ import io.netty.buffer.Unpooled;
 public class TftpDataPacket extends BaseTftpPacket {
 
     /**
-     * 0-65536
+     * [0-65535]
      */
     private int blockNumber;
 
@@ -28,6 +28,13 @@ public class TftpDataPacket extends BaseTftpPacket {
      * 块数据
      */
     private byte[] blockData;
+
+
+    public TftpDataPacket(int blockNumber, byte[] blockData) {
+        super(TftpOpcode.DATA);
+        this.blockNumber = blockNumber;
+        this.blockData = blockData;
+    }
 
 
     /**
@@ -46,13 +53,6 @@ public class TftpDataPacket extends BaseTftpPacket {
     }
 
 
-    public TftpDataPacket(int blockNumber, byte[] blockData) {
-        super(TftpOpcode.DATA);
-        this.blockNumber = blockNumber;
-        this.blockData = blockData;
-    }
-
-
     @Override
     public ByteBuf toByteBuf() {
         ByteBuf byteBuf = Unpooled.buffer(2 + 2 + blockData.length);
@@ -67,7 +67,6 @@ public class TftpDataPacket extends BaseTftpPacket {
     public int getBlockNumber() {
         return blockNumber;
     }
-
 
     public void setBlockNumber(int blockNumber) {
         this.blockNumber = blockNumber;
@@ -87,7 +86,7 @@ public class TftpDataPacket extends BaseTftpPacket {
         final StringBuilder sb = new StringBuilder("TftpDataPacket{");
         sb.append("opcode=").append(opcode);
         sb.append(", blockNumber=").append(blockNumber);
-        sb.append(", blockData=").append(blockData.length);
+        sb.append(", blockData length=").append(blockData.length);
         sb.append('}');
         return sb.toString();
     }

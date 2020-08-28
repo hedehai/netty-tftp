@@ -1,5 +1,6 @@
 package io.github.hedehai.tftp.packet;
 
+import io.github.hedehai.tftp.packet.enums.TftpOpcode;
 import io.netty.buffer.ByteBuf;
 
 /**
@@ -17,6 +18,22 @@ import io.netty.buffer.ByteBuf;
  */
 public class TftpWriteRequestPacket extends TftpRequestPacket {
 
+
+    /**
+     * @param filename
+     * @param blockSize
+     * @param timeout
+     * @param transferSize
+     */
+    public TftpWriteRequestPacket(String filename, Integer blockSize, Integer timeout,
+                                  Long transferSize) {
+        super(TftpOpcode.WRQ);
+        this.filename = filename;
+        this.blockSize = blockSize;
+        this.timeout = timeout;
+        this.transferSize = transferSize;
+        this.mode = TftpRequestPacket.MODE_OCTET;
+    }
 
     /**
      * @param byteBuf

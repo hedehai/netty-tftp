@@ -71,6 +71,36 @@ public class TftpOptionAckPacket extends BaseTftpPacket {
     }
 
 
+    /**
+     *
+     * @param byteBuf
+     */
+    public TftpOptionAckPacket(ByteBuf byteBuf) {
+        super(byteBuf);
+        this.opcode = TftpOpcode.get(byteBuf.readUnsignedShort());
+        // 将剩余部分读为字符串
+        byte[] bytes = new byte[byteBuf.readableBytes()];
+        byteBuf.readBytes(bytes);
+        String str = new String(bytes, StandardCharsets.US_ASCII);
+        String[] strArray = str.split("\0");
+        // 附加选项
+        for (int i = 0; i < strArray.length; i++) {
+            switch (strArray[i]) {
+                case TftpOptionAckPacket.OPTION_BLOCK_SIZE:
+                    this.blockSize = Integer.parseInt(strArray[i + 1]);
+                    break;
+                case TftpOptionAckPacket.OPTION_TIMEOUT:
+                    this.timeout = Integer.parseInt(strArray[i + 1]);
+                    break;
+                case TftpOptionAckPacket.OPTION_TRANSFER_SIZE:
+                    this.transferSize = Long.parseLong(strArray[i + 1]);
+                    break;
+                default:
+                    break;
+            }
+        }
+    }
+
     @Override
     public ByteBuf toByteBuf() {
         ByteBuf byteBuf = Unpooled.buffer(30);

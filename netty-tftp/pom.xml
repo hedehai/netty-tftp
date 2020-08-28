@@ -6,7 +6,7 @@
 
     <groupId>io.github.hedehai.tftp</groupId>
     <artifactId>netty-tftp</artifactId>
-    <version>1.0.0</version>
+    <version>1.1.0</version>
 
 
     <dependencies>
@@ -20,6 +20,14 @@
             <artifactId>slf4j-api</artifactId>
             <version>1.7.25</version>
         </dependency>
+
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>4.12</version>
+            <scope>test</scope>
+        </dependency>
+
     </dependencies>
 
 

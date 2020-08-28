@@ -63,8 +63,9 @@ server.start();
 + windows TFTP client
 + 3CDaemon v2.0
 
-以上这2个客户端都可以正常地连接到server上进行文件读写。3CDaemon功能更全，支持协商。
-
+PS:关于32M+文件的传输
++ windows TFTP client不支持协商。在非协商模式下，可以传输32M+的文件。
++ 3CDaemon支持协商。在非协商模式下，传输32M+的文件会报错。在协商模式下式，块大小*65536要大于文件大小，才能够传输32M+的文件。
 ## 待做列表
 
 实现配套的TFTP Client。

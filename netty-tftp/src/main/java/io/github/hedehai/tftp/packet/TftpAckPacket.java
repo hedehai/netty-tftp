@@ -19,7 +19,6 @@ import io.netty.buffer.Unpooled;
  */
 public class TftpAckPacket extends BaseTftpPacket {
 
-
     /**
      * 0-65535
      */

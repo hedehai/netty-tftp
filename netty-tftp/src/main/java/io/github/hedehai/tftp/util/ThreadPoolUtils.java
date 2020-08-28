@@ -14,7 +14,7 @@ public class ThreadPoolUtils {
 
 
     /**
-     * 获取线程池实例(3~10个线程)
+     * 获取线程池实例(3~20个线程)
      *
      * @return
      */
@@ -31,7 +31,7 @@ public class ThreadPoolUtils {
                 }
             };
             threadPool = new ScheduledThreadPoolExecutor(3, threadFactory);
-            threadPool.setMaximumPoolSize(10);
+            threadPool.setMaximumPoolSize(20);
         }
         //
         return threadPool;

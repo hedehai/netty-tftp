@@ -3,12 +3,9 @@ package io.github.hedehai.tftp;
 
 import io.github.hedehai.tftp.packet.*;
 import io.github.hedehai.tftp.packet.enums.TftpError;
-import io.github.hedehai.tftp.packet.enums.TftpOpcode;
 import io.github.hedehai.tftp.util.ThreadPoolUtils;
-import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
-import io.netty.channel.socket.DatagramPacket;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -16,21 +13,18 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.RandomAccessFile;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.Arrays;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
 import static io.github.hedehai.tftp.packet.enums.TftpError.*;
-import static io.github.hedehai.tftp.packet.enums.TftpOpcode.RRQ;
-import static io.github.hedehai.tftp.packet.enums.TftpOpcode.WRQ;
 
 
 /**
  * @author hedehai
  * @date 2020/8/9.
  */
-public class TftpServerHandler extends SimpleChannelInboundHandler<DatagramPacket> {
+public class TftpServerHandler extends SimpleChannelInboundHandler<BaseTftpPacket> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(TftpServerHandler.class);
 
@@ -38,66 +32,72 @@ public class TftpServerHandler extends SimpleChannelInboundHandler<DatagramPacke
 
     private static final int MAX_BLOCK_SIZE = 8192;
 
-
     private static final int DEFAULT_TIMEOUT = 3;
 
+    private static final int MAX_BLOCK_NUMBER = 65536;
 
-    private static final Map<String, TftpConnection> CONNECTION_MAP = new HashMap<>();
+    private static final int LINGER_TIME = 3;
 
+    private volatile RandomAccessFile raf;
+
+    private volatile long fileLength;
+
+    private volatile int blockSize;
+
+    private volatile byte[] blockBuffer;
+
+    private volatile int blockNumber;
+
+    private volatile boolean readFinished = false;
+
+    private volatile int retries;
+
+    private volatile int timeout;
 
     private TftpServer tftpServer;
 
 
     public TftpServerHandler(TftpServer tftpServer) {
         this.tftpServer = tftpServer;
+        timeout = DEFAULT_TIMEOUT;
     }
 
     @Override
-    protected void channelRead0(ChannelHandlerContext ctx, DatagramPacket udpPacket) throws Exception {
-        ByteBuf buf = udpPacket.content();
-        // 获取操作码，注意读针要回到最初的位置
-        TftpOpcode opcode = TftpOpcode.get(buf.readUnsignedShort());
-        buf.readerIndex(buf.readerIndex() - 2);
+    public void channelActive(ChannelHandlerContext ctx) throws Exception {
+        LOGGER.info("连接建立, remoteAdress = {}", ctx.channel().remoteAddress());
+    }
 
-        // 连接相关的操作。在处理报文前，要先确保连接对象存在。
-        String connectionId = udpPacket.sender().toString() + "->" + udpPacket.recipient().toString();
-        if (CONNECTION_MAP.get(connectionId) == null) {
-            // 如果是读请求或写请求，则新建连接
-            if (opcode == RRQ || opcode == WRQ) {
-                CONNECTION_MAP.put(connectionId, new TftpConnection(connectionId));
-                LOGGER.info("新建连接, id:{}", connectionId);
-            }
-            // 其它报文为非法
-            else {
-                LOGGER.warn("报文非法，因为是未建立连接, opcode:{}", opcode);
-                sendErrorPacket(UNKNOWN_TID, ctx, udpPacket);
-                return;
-            }
-        }
 
-        TftpConnection connection = CONNECTION_MAP.get(connectionId);
+    @Override
+    protected void channelRead0(ChannelHandlerContext ctx, BaseTftpPacket tftpPacket) throws Exception {
+        LOGGER.debug("收到报文{}", tftpPacket);
         //
-        switch (opcode) {
+        switch (tftpPacket.getOpcode()) {
             case RRQ:
-                handleReadRequestPacket(connection, ctx, udpPacket);
+                handleReadRequestPacket(ctx, (TftpReadRequestPacket) tftpPacket);
                 break;
             case WRQ:
-                handleWriteRequestPacket(connection, ctx, udpPacket);
+                handleWriteRequestPacket(ctx, (TftpWriteRequestPacket) tftpPacket);
                 break;
             case DATA:
-                handleDataPacket(connection, ctx, udpPacket);
+                handleDataPacket(ctx, (TftpDataPacket) tftpPacket);
                 break;
             case ACK:
-                handleAckPacket(connection, ctx, udpPacket);
+                handleAckPacket(ctx, (TftpAckPacket) tftpPacket);
                 break;
             case ERROR:
-                handleErrorPacket(connection, ctx, udpPacket);
+                handleErrorPacket(ctx, (TftpErrorPacket) tftpPacket);
                 break;
             default:
-                LOGGER.error("无法处理的报文类型：" + opcode);
-                sendErrorPacket(ILLEGAL_OPERATION, ctx, udpPacket);
+                // nop 不会执行到这里，在channel中就被处理掉了
                 break;
         }
+    }
+
+
+    @Override
+    public void channelInactive(ChannelHandlerContext ctx) throws Exception {
+        LOGGER.info("连接关闭, remoteAdress = {}\n", ctx.channel().remoteAddress());
     }
 
 
@@ -109,72 +109,65 @@ public class TftpServerHandler extends SimpleChannelInboundHandler<DatagramPacke
 
     /**
      * @param ctx
-     * @param udpPacket
+     * @param readPacket
      */
-    private void handleReadRequestPacket(TftpConnection connection,
-                                         ChannelHandlerContext ctx, DatagramPacket udpPacket) {
-        TftpReadRequestPacket packet1 = new TftpReadRequestPacket(udpPacket.content());
-        LOGGER.info("收到报文：" + packet1);
+    private void handleReadRequestPacket(ChannelHandlerContext ctx, TftpReadRequestPacket readPacket) {
         // 模式处理，仅支持octet模式
-        String mode = packet1.getMode();
+        String mode = readPacket.getMode();
         if (!Objects.equals(mode, TftpRequestPacket.MODE_OCTET)) {
             LOGGER.error("不支持此模式, mode:{}", mode);
-            sendErrorPacket(MODE_NOT_SUPPORTED, ctx, udpPacket);
+            sendErrorPacket(ctx, MODE_NOT_SUPPORTED);
             return;
         }
         // 若不允许读，则发送错误报文
         if (!tftpServer.allowRead) {
             LOGGER.error("没有设置读权限");
-            sendErrorPacket(NO_READ_PERMISSION, ctx, udpPacket);
+            sendErrorPacket(ctx, NO_READ_PERMISSION);
             return;
         }
         // 块大小选项
-        int blockSize = packet1.getBlockSize() == null ? DEFAULT_BLOCK_SIZE : packet1.getBlockSize();
-        connection.setBlockSize(blockSize);
-        connection.setReadBuffer(new byte[blockSize]);
+        blockSize = readPacket.getBlockSize() == null ? DEFAULT_BLOCK_SIZE : readPacket.getBlockSize();
+        blockBuffer = new byte[blockSize];
         // 初始化文件读取器
-        File file = new File(tftpServer.rootDir, packet1.getFilename());
-        long fileLength = file.length();
+        File file = new File(tftpServer.rootDir, readPacket.getFilename());
+        fileLength = file.length();
         try {
-            connection.setRaf(new RandomAccessFile(file, "r"));
-            connection.setFileLength(fileLength);
+            raf = new RandomAccessFile(file, "r");
+
         } catch (FileNotFoundException exp) {
             LOGGER.error("文件不存在", exp);
-            sendErrorPacket(FILE_NOT_FOUND, ctx, udpPacket);
+            sendErrorPacket(ctx, FILE_NOT_FOUND);
             return;
         }
-        LOGGER.info("read request, 文件：{} , 大小：{}B, 块大小：{}B, 分{}次传输.",
+        LOGGER.info("读请求, 文件：{} , 大小：{}B, 块大小：{}B, 分{}次传输.",
                 file, fileLength, blockSize, (fileLength / blockSize) + 1);
 
-        //  若为协商，则发送协商报文
-        if (packet1.isNegotiate()) {
+        //  若带协商，则发送协商应答报文
+        if (readPacket.isNegotiate()) {
             // 传输大小
-            Long transferSize = packet1.getTransferSize() != null ? fileLength : null;
+            Long transferSize = readPacket.getTransferSize() != null ? fileLength : null;
             // 超时时间
-            int timeout = packet1.getTimeout() != null ? packet1.getTimeout() : DEFAULT_TIMEOUT;
-            connection.setTimeout(timeout);
+            timeout = readPacket.getTimeout() != null ? readPacket.getTimeout() : DEFAULT_TIMEOUT;
             // 发送 OACK 报文
-            TftpOptionAckPacket optionAckPacket = new TftpOptionAckPacket(packet1.getBlockSize(),
-                    packet1.getTimeout(), transferSize);
+            TftpOptionAckPacket optionAckPacket = new TftpOptionAckPacket(readPacket.getBlockSize(),
+                    readPacket.getTimeout(), transferSize);
             LOGGER.debug("发送报文：" + optionAckPacket);
-            DatagramPacket responsePacket = new DatagramPacket(optionAckPacket.toByteBuf(), udpPacket.sender());
-            ctx.writeAndFlush(responsePacket);
+            ctx.writeAndFlush(optionAckPacket);
             //
-            connection.setBlockNumber(0);
+            blockNumber = 0;
         } else {
             // 传输第1块
             ThreadPoolUtils.getInstance().execute(() -> {
-                connection.setBlockNumber(1);
+                blockNumber = 1;
                 try {
-                    TftpDataPacket dataPacket = connection.createDataPacket(1);
+                    TftpDataPacket dataPacket = createDataPacket(1);
                     if (dataPacket != null) {
                         LOGGER.debug("发送报文：" + dataPacket);
-                        DatagramPacket responsePacket = new DatagramPacket(dataPacket.toByteBuf(), udpPacket.sender());
-                        ctx.writeAndFlush(responsePacket);
+                        ctx.writeAndFlush(dataPacket);
                     }
                 } catch (IOException exp) {
                     LOGGER.error("读取文件失败", exp);
-                    sendErrorPacket(ACCESS_VIOLATION, ctx, udpPacket);
+                    sendErrorPacket(ctx, ACCESS_VIOLATION);
                 }
             });
         }
@@ -183,32 +176,29 @@ public class TftpServerHandler extends SimpleChannelInboundHandler<DatagramPacke
 
     /**
      * @param ctx
-     * @param udpPacket
+     * @param writePacket
      */
-    private void handleWriteRequestPacket(TftpConnection connection,
-                                          ChannelHandlerContext ctx, DatagramPacket udpPacket) {
-        TftpWriteRequestPacket packet1 = new TftpWriteRequestPacket(udpPacket.content());
-        LOGGER.info("收到报文：" + packet1);
+    private void handleWriteRequestPacket(ChannelHandlerContext ctx, TftpWriteRequestPacket writePacket) {
         // 模式处理，仅支持octet模式
-        String mode = packet1.getMode();
+        String mode = writePacket.getMode();
         if (!Objects.equals(mode, TftpRequestPacket.MODE_OCTET)) {
             LOGGER.error("不支持此模式, mode:{}", mode);
-            sendErrorPacket(UNDEFINED, ctx, udpPacket);
+            sendErrorPacket(ctx, UNDEFINED);
             return;
         }
         // 若不允许写，则发送错误报文
         if (!tftpServer.allowWrite) {
             LOGGER.error("没有设置写权限");
-            sendErrorPacket(NO_READ_PERMISSION, ctx, udpPacket);
+            sendErrorPacket(ctx, NO_READ_PERMISSION);
             return;
         }
         //
-        File file = new File(tftpServer.rootDir, packet1.getFilename());
+        File file = new File(tftpServer.rootDir, writePacket.getFilename());
         if (file.exists()) {
             // 若不允许覆盖，则发送错误报文
             if (!tftpServer.allowOverwrite) {
                 LOGGER.error("没有设置覆盖权限");
-                sendErrorPacket(NO_OVERWRITE_PERMISSION, ctx, udpPacket);
+                sendErrorPacket(ctx, NO_OVERWRITE_PERMISSION);
                 return;
             }
         } else {
@@ -216,222 +206,238 @@ public class TftpServerHandler extends SimpleChannelInboundHandler<DatagramPacke
                 file.createNewFile();
             } catch (IOException exp) {
                 LOGGER.error("创建文件失败", exp);
-                sendErrorPacket(ACCESS_VIOLATION, ctx, udpPacket);
+                sendErrorPacket(ctx, ACCESS_VIOLATION);
                 return;
             }
         }
         //
         try {
-            connection.setRaf(new RandomAccessFile(file, "rw"));
+            raf = new RandomAccessFile(file, "rw");
         } catch (FileNotFoundException exp) {
             LOGGER.error("文件不存在", exp);
-            sendErrorPacket(TftpError.FILE_NOT_FOUND, ctx, udpPacket);
+            sendErrorPacket(ctx, TftpError.FILE_NOT_FOUND);
             return;
         }
-
         // 块大小选项
-        int blockSize = packet1.getBlockSize() == null ? DEFAULT_BLOCK_SIZE : packet1.getBlockSize();
+        blockSize = writePacket.getBlockSize() == null ? DEFAULT_BLOCK_SIZE : writePacket.getBlockSize();
         // 块大小不能超过MAX_BLOCK_SIZE，否则会被截断
         blockSize = Math.min(blockSize, MAX_BLOCK_SIZE);
-        connection.setBlockSize(blockSize);
-        connection.setReadBuffer(new byte[blockSize]);
+        blockBuffer = new byte[blockSize];
+        //
+        if (writePacket.getTransferSize() != null) {
+            fileLength = writePacket.getTransferSize();
+            LOGGER.info("写请求, 文件：{} , 大小：{}B, 块大小：{}B, 分{}次传输.",
+                    file, fileLength, blockSize, (fileLength / blockSize) + 1);
+        } else {
+            LOGGER.info("写请求, 文件：{} , 块大小：{}B", file, blockSize);
+        }
 
-        // 若为协商，则发送协商报文
-        if (packet1.isNegotiate()) {
+        // 若带协商，则发送协商应答报文
+        if (writePacket.isNegotiate()) {
             // 剩余空间不足，则发送错误报文
-            if (packet1.getTransferSize() != null &&
-                    file.getFreeSpace() < packet1.getTransferSize()) {
-                sendErrorPacket(TftpError.OUT_OF_SPACE, ctx, udpPacket);
+            if (writePacket.getTransferSize() != null &&
+                    file.getFreeSpace() < writePacket.getTransferSize()) {
+                sendErrorPacket(ctx, TftpError.OUT_OF_SPACE);
                 return;
             }
-            TftpOptionAckPacket optionAckPacket = new TftpOptionAckPacket(packet1.getBlockSize(),
-                    packet1.getTimeout(), packet1.getTransferSize());
+            TftpOptionAckPacket optionAckPacket = new TftpOptionAckPacket(writePacket.getBlockSize(),
+                    writePacket.getTimeout(), writePacket.getTransferSize());
             LOGGER.debug("发送报文：" + optionAckPacket);
-            DatagramPacket responsePacket = new DatagramPacket(optionAckPacket.toByteBuf(), udpPacket.sender());
-            ctx.writeAndFlush(responsePacket);
+
+            ctx.writeAndFlush(optionAckPacket);
         } else {
             // 应答 0
             TftpAckPacket ackPacket = new TftpAckPacket(0);
             LOGGER.debug("发送Ack报文：" + ackPacket);
-            DatagramPacket responsePacket = new DatagramPacket(ackPacket.toByteBuf(), udpPacket.sender());
-            ctx.writeAndFlush(responsePacket);
+            ctx.writeAndFlush(ackPacket);
         }
         // 下一个报文的编号为1
-        connection.setBlockNumber(1);
+        blockNumber = 1;
     }
 
 
     /**
      * @param ctx
-     * @param udpPacket
+     * @param ackPacket
      */
-    private void handleAckPacket(TftpConnection connection,
-                                 ChannelHandlerContext ctx, DatagramPacket udpPacket) {
-        TftpAckPacket packet1 = new TftpAckPacket(udpPacket.content());
-        LOGGER.debug("收到报文：" + packet1);
+    private void handleAckPacket(ChannelHandlerContext ctx, TftpAckPacket ackPacket) {
         // 当ack的blockNumber和上一个blockNumber一样时，则认为应答正常。
-        if (packet1.getBlockNumber() == connection.getBlockNumber()) {
-            if (connection.isReadFinished()) {
+        if (ackPacket.getBlockNumber() == blockNumber) {
+            // 若读取完毕，则
+            if (readFinished) {
                 LOGGER.info("读取完毕");
-                removeConnection(connection.getId());
+                // 延迟关闭连接
+                ctx.channel().eventLoop().schedule(() -> {
+                    ctx.close();
+                }, LINGER_TIME, TimeUnit.SECONDS);
                 return;
             }
+            //
             ThreadPoolUtils.getInstance().execute(() -> {
                 // 块号加1
-                connection.increaseBlockNumber();
+                blockNumber++;
+                if (blockNumber == MAX_BLOCK_NUMBER) {
+                    // 变成1，还是变成0？ 应当是从0开始，这个从windows的tftp客户端可以看出来
+                    blockNumber = 0;
+                    LOGGER.info("blockNumber重新开始");
+                }
                 try {
                     //
-                    TftpDataPacket dataPacket = connection.createDataPacket(connection.getBlockNumber());
+                    TftpDataPacket dataPacket = createDataPacket(blockNumber);
                     if (dataPacket != null) {
                         LOGGER.debug("发送报文：" + dataPacket);
-                        DatagramPacket responsePacket = new DatagramPacket(dataPacket.toByteBuf(), udpPacket.sender());
-                        ctx.writeAndFlush(responsePacket);
+                        ctx.writeAndFlush(dataPacket);
                     }
                 } catch (Exception exp) {
                     LOGGER.error("写入文件失败", exp);
-                    sendErrorPacket(ACCESS_VIOLATION, ctx, udpPacket);
+                    sendErrorPacket(ctx, ACCESS_VIOLATION);
                 }
-                connection.resetReties();
+                retries = 0;
             });
         }
-        // 如果不正常，就重传上一个包。
+        // 如果应答不正常，就重传上一个包。
         else {
-            connection.increaseReties();
+            retries++;
             // 达到最大重试次数时退出
-            if (connection.getRetries() > tftpServer.maxRetries) {
+            if (retries > tftpServer.maxRetries) {
                 LOGGER.error("达到最大重试次数");
-                sendErrorPacket(UNDEFINED, ctx, udpPacket);
+                sendErrorPacket(ctx, UNDEFINED);
                 return;
             }
-            LOGGER.warn("ack包不正常，{}秒后重传上一个data包", connection.getTimeout());
+            LOGGER.warn("ack包不正常，{}秒后重传上一个data包", timeout);
             // 服务端实际的超时等待时间要比客户端的小一些
-            int waitTime = connection.getTimeout() - 1;
-            ThreadPoolUtils.getInstance().schedule(() -> {
-                TftpDataPacket dataPacket = new TftpDataPacket(connection.getBlockNumber(),
-                        connection.getReadBuffer());
+            int delayTime = timeout - 1;
+            ctx.channel().eventLoop().schedule(() -> {
+                TftpDataPacket dataPacket = new TftpDataPacket(blockNumber, blockBuffer);
                 LOGGER.debug("发送报文：" + dataPacket);
-                DatagramPacket responsePacket = new DatagramPacket(dataPacket.toByteBuf(), udpPacket.sender());
-                ctx.writeAndFlush(responsePacket);
-            }, waitTime, TimeUnit.SECONDS);
+                ctx.writeAndFlush(dataPacket);
+            }, delayTime, TimeUnit.SECONDS);
         }
     }
 
 
     /**
      * @param ctx
-     * @param udpPacket
+     * @param dataPacket
      */
-    private void handleDataPacket(TftpConnection connection,
-                                  ChannelHandlerContext ctx, DatagramPacket udpPacket) {
-        TftpDataPacket dataPacket = new TftpDataPacket(udpPacket.content());
-        LOGGER.debug("收到报文：" + dataPacket);
-
+    private void handleDataPacket(ChannelHandlerContext ctx, TftpDataPacket dataPacket) {
         // 当data的blockNumber和blockNumber一样时，则认为正常。
-        if (dataPacket.getBlockNumber() == connection.getBlockNumber()) {
+        if (dataPacket.getBlockNumber() == blockNumber) {
             ThreadPoolUtils.getInstance().execute(() -> {
                 try {
                     // 读取包数据，写入文件
                     byte[] bytes = dataPacket.getBlockData();
-                    connection.write(bytes);
-                    if (bytes.length < connection.getBlockSize()) {
-                        connection.closeFile();
+                    raf.write(bytes);
+                    if (bytes.length < blockSize) {
+                        raf.close();
                         LOGGER.info("写入完毕");
-                        removeConnection(connection.getId());
+                        // 延迟关闭连接
+                        ctx.channel().eventLoop().schedule(() -> {
+                            ctx.close();
+                        }, LINGER_TIME, TimeUnit.SECONDS);
                     }
                 } catch (Exception exp) {
                     LOGGER.error("写入文件失败", exp);
-                    sendErrorPacket(ACCESS_VIOLATION, ctx, udpPacket);
+                    sendErrorPacket(ctx, ACCESS_VIOLATION);
                     return;
                 }
-
-                // 发送应答报文
-                sendAckPacket(dataPacket, ctx, udpPacket);
-
+                TftpAckPacket ackPacket = new TftpAckPacket(dataPacket.getBlockNumber());
+                LOGGER.debug("发送Ack报文：" + ackPacket);
+                ctx.writeAndFlush(ackPacket);
                 // 块号加1
-                connection.increaseBlockNumber();
+                blockNumber++;
+                if (blockNumber == MAX_BLOCK_NUMBER) {
+                    // 变成1，还是变成0？ 应当是从0开始，这个从windows的tftp客户端可以看出来
+                    blockNumber = 0;
+                    LOGGER.info("blockNumber重新开始");
+                }
             });
-
         }
         // 如果不正常，就重传上一个包。
         else {
-            connection.increaseReties();
+            retries++;
             // 达到最大重试次数时退出
-            if (connection.getRetries() > tftpServer.maxRetries) {
+            if (retries > tftpServer.maxRetries) {
                 LOGGER.error("达到最大重试次数");
-                sendErrorPacket(UNDEFINED, ctx, udpPacket);
+                sendErrorPacket(ctx, UNDEFINED);
                 return;
             }
-            LOGGER.warn("data不正常，{}秒后重传上一个ack包", connection.getTimeout());
+            LOGGER.warn("data不正常，{}秒后重传上一个ack包", timeout);
             // 服务端实际的超时等待时间要比客户端的小一些
-            int waitTime = connection.getTimeout() - 1;
+            int delayTime = timeout - 1;
             ThreadPoolUtils.getInstance().schedule(() -> {
-                sendAckPacket(dataPacket, ctx, udpPacket);
-            }, waitTime, TimeUnit.SECONDS);
+                TftpAckPacket ackPacket = new TftpAckPacket(dataPacket.getBlockNumber());
+                LOGGER.debug("发送Ack报文：" + ackPacket);
+                ctx.writeAndFlush(ackPacket);
+            }, delayTime, TimeUnit.SECONDS);
         }
 
 
     }
 
+
     /**
      * @param ctx
-     * @param udpPacket
+     * @param errorPacket
      */
-    private void handleErrorPacket(TftpConnection connection,
-                                   ChannelHandlerContext ctx, DatagramPacket udpPacket) {
-        TftpErrorPacket packet1 = new TftpErrorPacket(udpPacket.content());
-        LOGGER.error("收到错误报文，报文：{}", packet1);
-        removeConnection(connection.getId());
-
+    private void handleErrorPacket(ChannelHandlerContext ctx, TftpErrorPacket errorPacket) {
+        // 收到错误报文之后，要断开连接
+        ctx.close();
     }
 
+
     /**
-     * 根据收到的Data发送Ack
+     * @param errorType
+     * @param ctx
+     */
+    private void sendErrorPacket(ChannelHandlerContext ctx, TftpError errorType) {
+        TftpErrorPacket errorPacket = new TftpErrorPacket(errorType);
+        LOGGER.error("发送错误报文：" + errorPacket);
+        ctx.writeAndFlush(errorPacket);
+        //
+        ctx.close();
+    }
+
+
+    /**
+     * 注意：当文件的大小刚好为blockSize的整数倍时，最后还需要发送一个内容为空的数据包
      *
-     * @param dataPacket
-     * @param ctx
-     * @param udpPacket
+     * @return
+     * @throws Exception
      */
-    private void sendAckPacket(TftpDataPacket dataPacket,
-                               ChannelHandlerContext ctx, DatagramPacket udpPacket) {
-        TftpAckPacket ackPacket = new TftpAckPacket(dataPacket.getBlockNumber());
-        LOGGER.debug("发送Ack报文：" + ackPacket);
-        DatagramPacket responsePacket = new DatagramPacket(ackPacket.toByteBuf(), udpPacket.sender());
-        ctx.writeAndFlush(responsePacket);
-    }
-
-
-    /**
-     * 发送错误报文
-     *
-     * @param tftpError
-     * @param ctx
-     * @param udpPacket
-     */
-    private void sendErrorPacket(TftpError tftpError, ChannelHandlerContext ctx,
-                                 DatagramPacket udpPacket) {
-        TftpErrorPacket errorPacket = new TftpErrorPacket(tftpError);
-        LOGGER.debug("发送错误报文：" + errorPacket);
-        DatagramPacket responsePacket = new DatagramPacket(errorPacket.toByteBuf(), udpPacket.sender());
-        ctx.writeAndFlush(responsePacket);
-        //移除连接
-        String connectionId = udpPacket.sender().toString() + "->" + udpPacket.recipient().toString();
-        removeConnection(connectionId);
-    }
-
-
-    /**
-     * @param connectionId
-     */
-    private void removeConnection(String connectionId) {
-        //延迟n秒
-        int delayRemoveConnection = 3;
-        if (CONNECTION_MAP.get(connectionId) != null) {
-            LOGGER.info("{}秒后移除连接, id:{}\n", delayRemoveConnection, connectionId);
-            ThreadPoolUtils.getInstance().schedule(() -> {
-                CONNECTION_MAP.remove(connectionId);
-            }, delayRemoveConnection, TimeUnit.SECONDS);
+    private TftpDataPacket createDataPacket(int blockNumber) throws IOException {
+        TftpDataPacket packet;
+        int readCount = raf.read(blockBuffer);
+        // 当读不到内容时
+        if (readCount == -1) {
+            raf.close();
+            readFinished = true;
+            // 文件读取完毕后，还需检查文件大小是否等于blockSize的整数倍，
+            // 若是，则需要再补发一个空包
+            if (fileLength % blockSize == 0) {
+                // 内容为空的数据包
+                packet = new TftpDataPacket(blockNumber, new byte[]{});
+            } else {
+                return null;
+            }
+        } else {
+            // 当 readCount小于blockSize时，说明它是最后一个数据块
+            if (readCount < blockSize) {
+                raf.close();
+                readFinished = true;
+                //
+                byte[] lastBlockData = Arrays.copyOf(blockBuffer, readCount);
+                packet = new TftpDataPacket(blockNumber, lastBlockData);
+            } else {
+                packet = new TftpDataPacket(blockNumber, blockBuffer);
+            }
         }
+        return packet;
     }
+
+
+
 
 
 }
+

@@ -2,8 +2,12 @@ package io.github.hedehai.tftp.packet;
 
 import io.github.hedehai.tftp.packet.enums.TftpOpcode;
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.Unpooled;
 
 import java.nio.charset.StandardCharsets;
+
+import static io.github.hedehai.tftp.packet.TftpOptionAckPacket.*;
+
 
 /**
  * 方向：Client -> Server
@@ -14,7 +18,6 @@ import java.nio.charset.StandardCharsets;
 public class TftpRequestPacket extends BaseTftpPacket {
 
     public static final String MODE_OCTET = "octet";
-
 
     /**
      *
@@ -44,6 +47,13 @@ public class TftpRequestPacket extends BaseTftpPacket {
 
 
     /**
+     * @param opcode
+     */
+    public TftpRequestPacket(TftpOpcode opcode) {
+        super(opcode);
+    }
+
+    /**
      * @param byteBuf
      */
     public TftpRequestPacket(ByteBuf byteBuf) {
@@ -61,13 +71,13 @@ public class TftpRequestPacket extends BaseTftpPacket {
         // 附加选项
         for (int i = 2; i < strArray.length; i++) {
             switch (strArray[i]) {
-                case TftpOptionAckPacket.OPTION_BLOCK_SIZE:
+                case OPTION_BLOCK_SIZE:
                     this.blockSize = Integer.parseInt(strArray[i + 1]);
                     break;
-                case TftpOptionAckPacket.OPTION_TIMEOUT:
+                case OPTION_TIMEOUT:
                     this.timeout = Integer.parseInt(strArray[i + 1]);
                     break;
-                case TftpOptionAckPacket.OPTION_TRANSFER_SIZE:
+                case OPTION_TRANSFER_SIZE:
                     this.transferSize = Long.parseLong(strArray[i + 1]);
                     break;
                 default:
@@ -78,8 +88,37 @@ public class TftpRequestPacket extends BaseTftpPacket {
 
 
     @Override
-    protected ByteBuf toByteBuf() {
-        return null;
+    public ByteBuf toByteBuf() {
+        ByteBuf byteBuf = Unpooled.buffer(30);
+        byteBuf.writeBytes(this.opcode.toByteArray());
+        // 文件名
+        byteBuf.writeBytes(filename.getBytes(StandardCharsets.US_ASCII));
+        byteBuf.writeByte(0);
+        // 模式
+        byteBuf.writeBytes(mode.getBytes(StandardCharsets.US_ASCII));
+        byteBuf.writeByte(0);
+        //
+        if (blockSize != null) {
+            byteBuf.writeBytes(OPTION_BLOCK_SIZE.getBytes(StandardCharsets.US_ASCII));
+            byteBuf.writeByte(0);
+            byteBuf.writeBytes(String.valueOf(blockSize).getBytes(StandardCharsets.US_ASCII));
+            byteBuf.writeByte(0);
+        }
+        //
+        if (timeout != null) {
+            byteBuf.writeBytes(OPTION_TIMEOUT.getBytes(StandardCharsets.US_ASCII));
+            byteBuf.writeByte(0);
+            byteBuf.writeBytes(String.valueOf(timeout).getBytes(StandardCharsets.US_ASCII));
+            byteBuf.writeByte(0);
+        }
+        //
+        if (transferSize != null) {
+            byteBuf.writeBytes(OPTION_TRANSFER_SIZE.getBytes(StandardCharsets.US_ASCII));
+            byteBuf.writeByte(0);
+            byteBuf.writeBytes(String.valueOf(transferSize).getBytes(StandardCharsets.US_ASCII));
+            byteBuf.writeByte(0);
+        }
+        return byteBuf;
     }
 
 
