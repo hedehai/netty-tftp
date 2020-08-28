@@ -27,7 +27,7 @@
 <dependency>
     <groupId>io.github.hedehai.tftp</groupId>
     <artifactId>netty-tftp</artifactId>
-    <version>1.0.0</version>
+    <version>1.1.0</version>
 </dependency>
 
 <repository>
