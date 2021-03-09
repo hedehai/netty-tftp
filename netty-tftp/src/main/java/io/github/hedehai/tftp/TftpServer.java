@@ -42,9 +42,6 @@ public class TftpServer {
     protected int maxRetries;
 
 
-    /**
-     * 端口
-     */
     private int port;
 
     private Channel serverChannel;
@@ -92,16 +89,10 @@ public class TftpServer {
     /**
      * 启动服务器
      */
-    public void start() throws Exception {
+    public void start() throws InterruptedException {
         serverChannel = bootstrap.bind(port)
                 .sync().channel();
-        //
-        serverChannel.closeFuture().addListener(new ChannelFutureListener() {
-            @Override
-            public void operationComplete(ChannelFuture future) {
-                group.shutdownGracefully();
-            }
-        });
+        serverChannel.closeFuture().addListener(future -> group.shutdownGracefully());
     }
 
 
@@ -112,13 +103,11 @@ public class TftpServer {
         serverChannel.close();
     }
 
+
     public File getRootDir() {
         return rootDir;
     }
 
-    public void setRootDir(File rootDir) {
-        this.rootDir = rootDir;
-    }
 
     public boolean isAllowRead() {
         return allowRead;
@@ -150,6 +139,10 @@ public class TftpServer {
 
     public void setMaxRetries(int maxRetries) {
         this.maxRetries = maxRetries;
+    }
+
+    public int getPort() {
+        return port;
     }
 
     @Override

@@ -14,6 +14,13 @@ public class ThreadPoolUtils {
 
 
     /**
+     *
+     */
+    private ThreadPoolUtils() {
+        // nop
+    }
+
+    /**
      * 获取线程池实例(3~20个线程)
      *
      * @return
@@ -36,6 +43,5 @@ public class ThreadPoolUtils {
         //
         return threadPool;
     }
-
 
 }

@@ -15,7 +15,6 @@ public class TftpAckPacketTest {
         TftpAckPacket packet1 = new TftpAckPacket(110);
         ByteBuf byteBuf = packet1.toByteBuf();
         System.out.println("packet1 = " + packet1);
-
         // 用byteBuf构建，看能否还原
         TftpAckPacket packet2 = new TftpAckPacket(byteBuf);
         System.out.println("packet2 = " + packet2);

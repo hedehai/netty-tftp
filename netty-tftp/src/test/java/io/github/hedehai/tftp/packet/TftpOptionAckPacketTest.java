@@ -15,7 +15,6 @@ public class TftpOptionAckPacketTest {
         TftpOptionAckPacket packet1 = new TftpOptionAckPacket(1024, 5, 100_1024L);
         ByteBuf byteBuf = packet1.toByteBuf();
         System.out.println("packet1 = " + packet1);
-
         // 用byteBuf构建，看能否还原
         TftpOptionAckPacket packet2 = new TftpOptionAckPacket(byteBuf);
         System.out.println("packet2 = " + packet2);

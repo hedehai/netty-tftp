@@ -36,6 +36,16 @@ public class TftpWriteRequestPacket extends TftpRequestPacket {
     }
 
     /**
+     * 不带协商的写请求
+     *
+     * @param filename
+     */
+    public TftpWriteRequestPacket(String filename) {
+        this(filename, null, null, null);
+    }
+
+
+    /**
      * @param byteBuf
      */
     public TftpWriteRequestPacket(ByteBuf byteBuf) {
@@ -45,14 +55,14 @@ public class TftpWriteRequestPacket extends TftpRequestPacket {
 
     @Override
     public String toString() {
-        final StringBuilder sb = new StringBuilder("TftpWriteRequestPacket{");
-        sb.append("opcode=").append(opcode);
-        sb.append(", mode='").append(mode).append('\'');
-        sb.append(", filename='").append(filename).append('\'');
-        sb.append(", blockSize=").append(blockSize);
-        sb.append(", timeout=").append(timeout);
-        sb.append(", transferSize=").append(transferSize);
-        sb.append('}');
-        return sb.toString();
+        final StringBuilder sb2 = new StringBuilder("TftpWriteRequestPacket{");
+        sb2.append("opcode=").append(opcode);
+        sb2.append(", mode='").append(mode).append('\'');
+        sb2.append(", filename='").append(filename).append('\'');
+        sb2.append(", blockSize=").append(blockSize);
+        sb2.append(", timeout=").append(timeout);
+        sb2.append(", transferSize=").append(transferSize);
+        sb2.append('}');
+        return sb2.toString();
     }
 }

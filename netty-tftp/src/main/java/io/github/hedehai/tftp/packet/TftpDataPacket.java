@@ -68,16 +68,9 @@ public class TftpDataPacket extends BaseTftpPacket {
         return blockNumber;
     }
 
-    public void setBlockNumber(int blockNumber) {
-        this.blockNumber = blockNumber;
-    }
 
     public byte[] getBlockData() {
         return blockData;
-    }
-
-    public void setBlockData(byte[] blockData) {
-        this.blockData = blockData;
     }
 
 

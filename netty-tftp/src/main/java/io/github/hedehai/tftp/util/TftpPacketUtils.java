@@ -13,6 +13,12 @@ public class TftpPacketUtils {
 
     /**
      *
+     */
+    private TftpPacketUtils() {
+        // nop
+    }
+
+    /**
      * @param buf
      * @return
      */
@@ -33,7 +39,6 @@ public class TftpPacketUtils {
             case ERROR:
                 return new TftpErrorPacket(buf);
             default:
-                // nop 不会执行至这里
                 return null;
         }
 

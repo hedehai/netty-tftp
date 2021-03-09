@@ -72,7 +72,6 @@ public class TftpOptionAckPacket extends BaseTftpPacket {
 
 
     /**
-     *
      * @param byteBuf
      */
     public TftpOptionAckPacket(ByteBuf byteBuf) {
@@ -134,25 +133,16 @@ public class TftpOptionAckPacket extends BaseTftpPacket {
         return blockSize;
     }
 
-    public void setBlockSize(Integer blockSize) {
-        this.blockSize = blockSize;
-    }
 
     public Integer getTimeout() {
         return timeout;
     }
 
-    public void setTimeout(Integer timeout) {
-        this.timeout = timeout;
-    }
 
     public Long getTransferSize() {
         return transferSize;
     }
 
-    public void setTransferSize(Long transferSize) {
-        this.transferSize = transferSize;
-    }
 
     @Override
     public String toString() {

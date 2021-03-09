@@ -58,11 +58,6 @@ public class TftpAckPacket extends BaseTftpPacket {
     }
 
 
-    public void setBlockNumber(int blockNumber) {
-        this.blockNumber = blockNumber;
-    }
-
-
     @Override
     public String toString() {
         final StringBuilder sb = new StringBuilder("TftpAckPacket{");

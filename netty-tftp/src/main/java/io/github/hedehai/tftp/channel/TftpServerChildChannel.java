@@ -69,7 +69,7 @@ public class TftpServerChildChannel extends AbstractChannel {
      */
     @Override
     public boolean isOpen() {
-        return active;
+        return isActive();
     }
 
     /**

@@ -16,7 +16,6 @@ public class TftpErrorPacketTest {
         TftpErrorPacket packet1 = new TftpErrorPacket(TftpError.FILE_EXISTS);
         ByteBuf byteBuf = packet1.toByteBuf();
         System.out.println("packet1 = " + packet1);
-
         // 用byteBuf构建，看能否还原
         TftpErrorPacket packet2 = new TftpErrorPacket(byteBuf);
         System.out.println("packet2 = " + packet2);
@@ -24,4 +23,6 @@ public class TftpErrorPacketTest {
         Assert.assertEquals(packet1.getErrorCode(), packet1.getErrorCode());
         Assert.assertEquals(packet1.getErrorMessage(), packet2.getErrorMessage());
     }
+
+
 }

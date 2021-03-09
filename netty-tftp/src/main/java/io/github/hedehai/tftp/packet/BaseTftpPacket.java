@@ -40,10 +40,6 @@ public abstract class BaseTftpPacket {
         return opcode;
     }
 
-    public void setOpcode(TftpOpcode opcode) {
-        this.opcode = opcode;
-    }
-
 
     public InetSocketAddress getRemoteAddress() {
         return remoteAddress;

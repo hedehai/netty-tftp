@@ -98,10 +98,10 @@ public class TftpRequestPacket extends BaseTftpPacket {
         byteBuf.writeBytes(mode.getBytes(StandardCharsets.US_ASCII));
         byteBuf.writeByte(0);
         //
-        if (blockSize != null) {
-            byteBuf.writeBytes(OPTION_BLOCK_SIZE.getBytes(StandardCharsets.US_ASCII));
+        if (transferSize != null) {
+            byteBuf.writeBytes(OPTION_TRANSFER_SIZE.getBytes(StandardCharsets.US_ASCII));
             byteBuf.writeByte(0);
-            byteBuf.writeBytes(String.valueOf(blockSize).getBytes(StandardCharsets.US_ASCII));
+            byteBuf.writeBytes(String.valueOf(transferSize).getBytes(StandardCharsets.US_ASCII));
             byteBuf.writeByte(0);
         }
         //
@@ -112,10 +112,10 @@ public class TftpRequestPacket extends BaseTftpPacket {
             byteBuf.writeByte(0);
         }
         //
-        if (transferSize != null) {
-            byteBuf.writeBytes(OPTION_TRANSFER_SIZE.getBytes(StandardCharsets.US_ASCII));
+        if (blockSize != null) {
+            byteBuf.writeBytes(OPTION_BLOCK_SIZE.getBytes(StandardCharsets.US_ASCII));
             byteBuf.writeByte(0);
-            byteBuf.writeBytes(String.valueOf(transferSize).getBytes(StandardCharsets.US_ASCII));
+            byteBuf.writeBytes(String.valueOf(blockSize).getBytes(StandardCharsets.US_ASCII));
             byteBuf.writeByte(0);
         }
         return byteBuf;
@@ -145,32 +145,19 @@ public class TftpRequestPacket extends BaseTftpPacket {
         return filename;
     }
 
-    public void setFilename(String filename) {
-        this.filename = filename;
-    }
 
     public Integer getBlockSize() {
         return blockSize;
     }
 
-    public void setBlockSize(Integer blockSize) {
-        this.blockSize = blockSize;
-    }
 
     public Integer getTimeout() {
         return timeout;
     }
 
-    public void setTimeout(Integer timeout) {
-        this.timeout = timeout;
-    }
 
     public Long getTransferSize() {
         return transferSize;
-    }
-
-    public void setTransferSize(Long transferSize) {
-        this.transferSize = transferSize;
     }
 
 

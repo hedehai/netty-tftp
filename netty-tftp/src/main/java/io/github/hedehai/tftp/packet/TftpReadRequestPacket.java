@@ -19,7 +19,6 @@ import io.netty.buffer.ByteBuf;
 public class TftpReadRequestPacket extends TftpRequestPacket {
 
 
-
     /**
      * @param filename
      * @param blockSize
@@ -36,6 +35,16 @@ public class TftpReadRequestPacket extends TftpRequestPacket {
         this.mode = TftpRequestPacket.MODE_OCTET;
     }
 
+
+    /**
+     * 不带协商的读请求报文
+     *
+     * @param filename
+     */
+    public TftpReadRequestPacket(String filename) {
+        this(filename, null, null, null);
+    }
+
     /**
      * @param byteBuf
      */
@@ -46,7 +55,7 @@ public class TftpReadRequestPacket extends TftpRequestPacket {
 
     @Override
     public String toString() {
-        final StringBuilder sb = new StringBuilder("TftpReadRequestPacket{");
+        StringBuilder sb = new StringBuilder("TftpReadRequestPacket{");
         sb.append("opcode=").append(opcode);
         sb.append(", mode='").append(mode).append('\'');
         sb.append(", filename='").append(filename).append('\'');

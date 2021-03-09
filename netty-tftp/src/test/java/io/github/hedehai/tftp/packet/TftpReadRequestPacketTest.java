@@ -28,7 +28,6 @@ public class TftpReadRequestPacketTest {
     }
 
 
-
     @Test
     public void t2() {
         TftpWriteRequestPacket packet1 = new TftpWriteRequestPacket("123.txt", null, null, null);

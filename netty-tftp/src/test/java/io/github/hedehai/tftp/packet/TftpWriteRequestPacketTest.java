@@ -4,8 +4,6 @@ import io.netty.buffer.ByteBuf;
 import org.junit.Assert;
 import org.junit.Test;
 
-import static org.junit.Assert.*;
-
 /**
  * @author 何德海
  * @date 2020/8/28.
@@ -14,7 +12,8 @@ public class TftpWriteRequestPacketTest {
 
     @Test
     public void t1() {
-        TftpWriteRequestPacket packet1 = new TftpWriteRequestPacket("123.txt", 1024, 15, 100_1024L);
+        TftpWriteRequestPacket packet1 = new TftpWriteRequestPacket("123.txt",
+                1024, 15, 100_1024L);
         ByteBuf byteBuf = packet1.toByteBuf();
         System.out.println("packet1 = " + packet1);
         // 用byteBuf构建，看能否还原
