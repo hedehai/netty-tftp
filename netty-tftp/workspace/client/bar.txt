@@ -1,0 +1,34 @@
+Network Working Group                                          G. Malkin
+Request for Commments: 2347                                 Bay Networks
+Updates: 1350                                                  A. Harkin
+Obsoletes: 1782                                      Hewlett Packard Co.
+Category: Standards Track                                       May 1998
+
+
+                         TFTP Option Extension
+
+Status of this Memo
+
+   This document specifies an Internet standards track protocol for the
+   Internet community, and requests discussion and suggestions for
+   improvements.  Please refer to the current edition of the "Internet
+   Official Protocol Standards" (STD 1) for the standardization state
+   and status of this protocol.  Distribution of this memo is unlimited.
+
+Copyright Notice
+
+   Copyright (C) The Internet Society (1998).  All Rights Reserved.
+
+Abstract
+
+   The Trivial File Transfer Protocol [1] is a simple, lock-step, file
+   transfer protocol which allows a client to get or put a file onto a
+   remote host.  This document describes a simple extension to TFTP to
+   allow option negotiation prior to the file transfer.
+
+Introduction
+
+   The option negotiation mechanism proposed in this document is a
+   backward-compatible extension to the TFTP protocol.  It allows file
+   transfer options to be negotiated prior to the transfer using a
+   mechanism which is c
