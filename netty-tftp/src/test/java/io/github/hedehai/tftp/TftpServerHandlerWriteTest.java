@@ -158,11 +158,11 @@ public class TftpServerHandlerWriteTest {
 
     /**
      * 测试写请求（不带协商）时，文件存在时的情况
-     * 本地文件大小：612B
+     * 服务端文件大小：612B
      * <pre>
      * client                                           server
      * -------------------------------------------------------
-     * |2|bar.txt|0|octet|0|  -->                          WRQ
+     * |2|bar.txt|0|octet|0|  -->                            WRQ
      *                                           <--  |4|0|  ACK
      * |3|1| 512 octets of data |                       --> DATA
      * </pre>
@@ -205,18 +205,11 @@ public class TftpServerHandlerWriteTest {
         // 期望得到：ACK报文
         Assert.assertEquals(TftpOpcode.ACK, output3.getOpcode());
         Assert.assertEquals(2, ((TftpAckPacket) output3).getBlockNumber());
-        // 期望:文件大小：612
-        File file = new File("workspace\\server\\bar.txt");
-        Assert.assertEquals(612, file.length());
-        // 清理
-        file.delete();
-
     }
 
 
     /**
      * 测试写请求（带协商）时，文件存在时的情况。
-     * 本地文件大小：1000B
      * <pre>
      * client                                                              server
      * ---------------------------------------------------------------------------
@@ -266,11 +259,6 @@ public class TftpServerHandlerWriteTest {
         // 期望得到：ACK报文
         Assert.assertEquals(TftpOpcode.ACK, output3.getOpcode());
         Assert.assertEquals(2, ((TftpAckPacket) output3).getBlockNumber());
-        // 期望: 文件大小：1000
-        File file = new File("workspace\\server\\bar.txt");
-        Assert.assertEquals(1000, file.length());
-        // 清理
-        file.delete();
     }
 
 }
