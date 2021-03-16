@@ -29,12 +29,14 @@ import static io.github.hedehai.tftp.packet.enums.TftpError.UNKNOWN_TID;
  */
 public class TftpServerTest {
 
+    int port = 8069;
+
     /**
      * @return
      */
     private TftpServer createServer() {
         File rootDir = new File("workspace/server/");
-        return new TftpServer(rootDir, 69);
+        return new TftpServer(rootDir, port);
     }
 
     /**
@@ -45,11 +47,11 @@ public class TftpServerTest {
     @Test
     public void test0() throws Exception {
         File rootDir = new File("workspace/server/");
-        TftpServer server1 = new TftpServer(rootDir, 69);
+        TftpServer server1 = new TftpServer(rootDir, port);
         server1.start();
         server1.stop();
 
-        TftpServer server2 = new TftpServer(rootDir, 69);
+        TftpServer server2 = new TftpServer(rootDir, port);
         server2.start();
         server2.stop();
         // 如果能够正常启动,能够执行到此
@@ -64,7 +66,7 @@ public class TftpServerTest {
     @Test
     public void test1() throws InterruptedException, IOException {
         File rootDir = new File("workspace/server/");
-        TftpServer server = new TftpServer(rootDir, 69);
+        TftpServer server = new TftpServer(rootDir, port);
         server.setAllowRead(true);
         server.setAllowWrite(true);
         server.setAllowOverwrite(true);
@@ -75,7 +77,7 @@ public class TftpServerTest {
         Assert.assertTrue(server.isAllowRead());
         Assert.assertTrue(server.isAllowWrite());
         Assert.assertTrue(server.isAllowOverwrite());
-        Assert.assertEquals(69, server.getPort());
+        Assert.assertEquals(port, server.getPort());
         Assert.assertEquals(rootDir, server.getRootDir());
         Assert.assertEquals(10, server.getMaxRetries());
     }
@@ -95,7 +97,7 @@ public class TftpServerTest {
         DatagramSocket datagramSocket = new DatagramSocket();
         TftpReadRequestPacket packet1 = new TftpReadRequestPacket("foo-2.txt", null, null, null);
         byte[] bytes = ByteBufUtil.getBytes(packet1.toByteBuf());
-        SocketAddress socketAddress = new InetSocketAddress("127.0.0.1", 69);
+        SocketAddress socketAddress = new InetSocketAddress("127.0.0.1", port);
         DatagramPacket datagramPacket1 = new DatagramPacket(bytes, bytes.length, socketAddress);
         datagramSocket.send(datagramPacket1);
         TimeUnit.SECONDS.sleep(2);
@@ -130,7 +132,7 @@ public class TftpServerTest {
         DatagramSocket datagramSocket = new DatagramSocket();
         TftpAckPacket packet1 = new TftpAckPacket(10);
         byte[] bytes = ByteBufUtil.getBytes(packet1.toByteBuf());
-        SocketAddress socketAddress = new InetSocketAddress("127.0.0.1", 69);
+        SocketAddress socketAddress = new InetSocketAddress("127.0.0.1", port);
         DatagramPacket datagramPacket1 = new DatagramPacket(bytes, bytes.length, socketAddress);
         datagramSocket.send(datagramPacket1);
         TimeUnit.SECONDS.sleep(2);

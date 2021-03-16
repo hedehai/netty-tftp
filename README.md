@@ -1,5 +1,7 @@
 # netty-tftp
-　　netty-tftp实现了基于netty的TFTP Server。
+[![Java CI with Maven](https://github.com/hedehai/netty-tftp/actions/workflows/maven-build.yml/badge.svg)](https://github.com/hedehai/netty-tftp/actions/workflows/maven-build.yml)
+　　
+netty-tftp实现了基于netty的TFTP Server。
   
 　　之所以造这个轮子，是因为我在项目中需要集成TFTP Server，但没有找到合适的java库。现有的几个java库有以下的问题：
 + 不支持选项协商，每个包只能传输512B，传输速度慢。

@@ -11,6 +11,7 @@ import java.net.InetSocketAddress;
  */
 public class TftpServerChannelTest {
 
+    int port = 8069;
 
     @Test(expected = UnsupportedOperationException.class)
     public void test1() throws Exception {
@@ -36,8 +37,8 @@ public class TftpServerChannelTest {
     @Test
     public void test4() throws Exception {
         TftpServerChannel serverChannel = new TftpServerChannel();
-        serverChannel.doBind(new InetSocketAddress(69));
-        Assert.assertEquals(69, serverChannel.localAddress0().getPort());
+        serverChannel.doBind(new InetSocketAddress(port));
+        Assert.assertEquals(port, serverChannel.localAddress0().getPort());
     }
 
 }
