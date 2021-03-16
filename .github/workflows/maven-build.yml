@@ -17,4 +17,4 @@ jobs:
       with:
         java-version: 1.8
     - name: Build with Maven
-      run: mvn -B package --file pom.xml -Djava.net.preferIPv4Stack=true -DskipTests
+      run: mvn -B package --file pom.xml -Djava.net.preferIPv4Stack=true
