@@ -243,7 +243,7 @@ public class TftpServerHandlerReadTest {
 
 
     /**
-     * todo 测试读请求(不带协商)时，模拟丢包
+     * todo 测试读请求(不带协商)时，模拟丢包（客户端收不到服务端的DATA包）
      * <pre>
      * client                                           server
      * -------------------------------------------------------
@@ -285,8 +285,8 @@ public class TftpServerHandlerReadTest {
         Assert.assertEquals(TftpOpcode.DATA, output2.getOpcode());
         Assert.assertEquals(2, ((TftpDataPacket) output2).getBlockNumber());
 
-        // 模拟网络出了问题：假定没有收到编号为2的DATA报文，客户端发送编号为1的ACK，
-        // 这会让服务端发送上一个DATA包(编号为2)。
+        // 模拟网络出了问题：假定客户端没有收到编号为2的DATA报文，
+        // 此时客户端需要发送编号为1的ACK，这会让服务端发送上一个DATA包(编号为2)。
 
         // 3 请求数据, ACK报文
         TftpAckPacket input3 = new TftpAckPacket(1);
